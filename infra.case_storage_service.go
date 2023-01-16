@@ -1,13 +1,12 @@
 package casedb
 
 import (
+	"log"
 	"os"
 	"time"
 
-	llog "log"
-
-	"github.com/case-management-suite/common"
 	"github.com/case-management-suite/common/config"
+	"github.com/case-management-suite/common/server"
 	"github.com/case-management-suite/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -34,7 +33,7 @@ func NewSQLCaseStorageService(config config.DatabaseConfig) CaseStorageService {
 	}
 
 	newLogger := logger.New(
-		llog.New(os.Stdout, "\r\n", llog.LstdFlags), // io writer
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
 			SlowThreshold:             time.Second, // Slow SQL threshold
 			LogLevel:                  logLevel,    // Log level
@@ -47,12 +46,12 @@ func NewSQLCaseStorageService(config config.DatabaseConfig) CaseStorageService {
 
 	db.AutoMigrate(models.CaseRecord{})
 	db.AutoMigrate(models.CaseAction{CaseRecord: models.CaseRecord{}})
-	return CaseStorageServiceImpl{DB: db, ServerUtils: common.NewTestServerUtils()}
+	return CaseStorageServiceImpl{DB: db, ServerUtils: server.NewTestServerUtils()}
 }
 
 type CaseStorageServiceImpl struct {
 	DB *gorm.DB
-	common.ServerUtils
+	server.ServerUtils
 }
 
 func (c CaseStorageServiceImpl) SaveNewCase(id models.Identifier) error {
@@ -93,8 +92,6 @@ func (c CaseStorageServiceImpl) UpdateCase(caseRecord *models.CaseRecord) error 
 	result := c.DB.Save(&caseRecord)
 	if result.Error != nil {
 		c.Logger.Warn().Err(result.Error).Str("UUID", caseRecord.ID).Msg("DB: Failed to update case")
-	} else {
-		c.Logger.Debug().Str("UUID", caseRecord.ID).Str("status", caseRecord.Status).Msg("DB: Updated case")
 	}
 	return result.Error
 }
